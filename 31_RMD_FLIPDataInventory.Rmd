@@ -1,0 +1,32 @@
+---
+title: "FLIP daily diary data"
+output: html_document
+---
+
+## Participants and recorded observations
+
+```{r real-data-inventory}
+flip_path <- file.path("flip", "0002_nestler_ts.tsv")
+flip <- read.delim(flip_path, check.names = FALSE)
+flip_variables <- c("sociable", "creative", "friendly", "organised",
+                    "self_esteem", "nervous")
+flip_counts <- table(flip$id)
+days_by_participant <- split(flip$day, flip$id)
+flip_complete_82 <- sum(vapply(days_by_participant, function(days) {
+  all(seq_len(82) %in% days)
+}, logical(1)))
+flip_n <- nrow(flip)
+flip_k <- length(flip_counts)
+flip_duplicate_keys <- sum(duplicated(flip[c("id", "day", "beep")]))
+flip_incomplete <- sum(!complete.cases(flip[flip_variables]))
+```
+
+| Inventory item | Result |
+|:--|--:|
+| Participants | `r flip_k` |
+| Recorded observations | `r format(flip_n, big.mark = ",")` |
+| Observations per participant (minimum / median / maximum) | `r min(flip_counts)` / `r median(as.numeric(flip_counts))` / `r max(flip_counts)` |
+| First and last recorded study day | `r min(flip$day)` to `r max(flip$day)` |
+| Participants with a record on every study day from 1 through 82 | `r flip_complete_82` |
+| Rows repeating an earlier participant/day | `r flip_duplicate_keys` |
+| Recorded rows missing at least one of the six ratings | `r flip_incomplete` |

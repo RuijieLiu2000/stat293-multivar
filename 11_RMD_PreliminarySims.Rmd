@@ -1,0 +1,147 @@
+---
+title: "A small example: multi-VAR and adaptive multi-VAR"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+source("00_load_functions.R")
+knitr::opts_chunk$set(message = FALSE, fig.align = "center", out.width = "100%")
+```
+
+## 1. Simulate one dataset
+
+Three subjects, five variables, and 80 observations per subject. Each true
+transition matrix has two common and two individual nonzero coefficients.
+The last three observations are held out.
+
+```{r example-data}
+config <- study_config("preliminary", reps = 1L)
+settings <- data.frame(
+  K = 3L, d = 5L, T = 80L,
+  density = 0.16, common_fraction = 0.5,
+  sigma = 1, cross_rho = 0, serial_rho = 0,
+  measurement_sd = 0, target_radius = 0.8
+)
+example <- generate_dataset(settings, replication = 1L, config = config)
+series <- example$sim$observed
+train_end <- settings$T - 3L
+training <- lapply(series, function(x) x[seq_len(train_end), , drop = FALSE])
+origins <- rolling_origins(settings$T, config$cv_origins)
+ratios <- config$ratio_multipliers / settings$K
+```
+
+```{r example-series, fig.width=9, fig.height=3.5}
+matplot(seq_len(settings$T), series[[1]][, 1:3], type = "l", lty = 1,
+        col = c("#0072B2", "#D55E00", "#009E73"),
+        xlab = "Time", ylab = "Observed value", main = "Subject 1")
+abline(v = train_end + 0.5, lty = 2, col = "grey40")
+legend("topright", paste("Variable", 1:3), lty = 1,
+       col = c("#0072B2", "#D55E00", "#009E73"),
+       bg = "white", box.col = "white", cex = 0.8)
+```
+
+## 2. Fit standard multi-VAR as the preliminary estimator
+
+Select penalties using rolling origins `r paste(origins, collapse = ", ")`,
+then fit standard multi-VAR to all `r train_end` training observations with FISTA.
+
+```{r fit-multivar}
+fit_multivar <- tune_multivar(
+  training, origins, config$fractions, ratios,
+  custom_final = TRUE
+)
+```
+
+## 3. Fit adaptive multi-VAR using the preliminary estimates
+
+Construct adaptive weights from the standard multi-VAR subject estimates:
+inverse common-median magnitudes and inverse deviations from that median. For validation, refit and tune each preliminary
+model. The final adaptive fit uses `fit_multivar`.
+
+```{r fit-adaptive-multivar}
+pilots <- fit_multivar_pilots(
+  training, origins, config$fractions, ratios,
+  final_fit = fit_multivar
+)
+fit_adaptive <- tune_multivar(
+  training, origins, config$fractions, ratios,
+  adaptive = TRUE, pilot_fits = pilots
+)
+fits <- list("Multi-VAR" = fit_multivar, "Adaptive multi-VAR" = fit_adaptive)
+```
+
+```{r selected-penalties, echo=FALSE}
+tuning <- data.frame(
+  Quantity = c("Selected common-penalty fraction ($\\lambda_c/\\lambda_{c,\\max}$)",
+               "Individual/common penalty ratio ($r=\\lambda_u/\\lambda_c$)",
+               "Common-component penalty ($\\lambda_c$)",
+               "Individual-component penalty ($\\lambda_u=r\\lambda_c$)",
+               "Minimum mean validation MSE"),
+  check.names = FALSE
+)
+for (method in names(fits)) {
+  fit <- fits[[method]]
+  tuning[[method]] <- c(fit$fraction, fit$ratio, fit$lambda,
+                        fit$ratio * fit$lambda, fit$cv_mse)
+}
+knitr::kable(tuning, digits = 4, caption = "Selected penalties")
+```
+
+For adaptive multi-VAR, these are base penalties; each coefficient's penalty
+is additionally multiplied by its adaptive weight.
+
+## 4. Compare coefficient estimates
+
+Subject 1: rows are responses and columns are lagged predictors.
+
+```{r coefficient-comparison, fig.width=12, fig.height=4.5}
+matrices <- list(
+  "True" = example$truth$A[[1]],
+  "Multi-VAR" = t(fit_multivar$B[[1]]),
+  "Adaptive multi-VAR" = t(fit_adaptive$B[[1]])
+)
+d <- settings$d
+color_limit <- max(abs(unlist(matrices)))
+colors <- colorRampPalette(c("#2166AC", "#FFFFFF", "#B2182B"))(101)
+par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
+for (title in names(matrices)) {
+  display <- t(matrices[[title]][d:1, , drop = FALSE])
+  image(seq_len(d), seq_len(d), display,
+        col = colors, zlim = c(-color_limit, color_limit), axes = FALSE,
+        xlab = "Predictor at t-1", ylab = "Response at t", main = title)
+  axis(1, at = seq_len(d), labels = paste0("V", seq_len(d)))
+  axis(2, at = seq_len(d), labels = paste0("V", d:1), las = 1)
+  labels <- ifelse(abs(display) < 0.005, "0.00", sprintf("%.2f", display))
+  text(rep(seq_len(d), times = d), rep(seq_len(d), each = d),
+       labels = as.vector(labels), cex = 0.75)
+  box()
+}
+```
+
+## 5. Compare recovery and heldout forecasts
+
+Metrics average over the three subjects.
+
+```{r evaluate-models}
+metrics <- lapply(fits, function(fit) {
+  evaluate_fit(fit, example$truth, example$sim,
+               sigma = settings$sigma, threshold = config$support_threshold)
+})
+```
+
+```{r comparison-table, echo=FALSE}
+metric_names <- c("relative_frobenius", "sensitivity",
+                  "specificity", "rmsfe_h1", "rmsfe_h2", "rmsfe_h3")
+comparison <- data.frame(
+  Metric = c("Relative Frobenius error", "Sensitivity",
+             "Specificity", "One-step RMSFE", "Two-step RMSFE", "Three-step RMSFE"),
+  check.names = FALSE
+)
+for (method in names(metrics)) {
+  comparison[[method]] <- unname(metrics[[method]][metric_names])
+}
+knitr::kable(comparison, digits = 3, caption = "Single-dataset comparison")
+```
+
+Lower errors and higher sensitivity/specificity are better. This is one
+illustrative dataset, not a repeated-simulation comparison. 

@@ -1,0 +1,23 @@
+**Simulation design**
+
+All conditions: 10 subjects, common fraction 0.5, maximum spectral radius 0.8.
+
+|Condition              |  d|   T| Density|  SD| Cross| Serial| Measurement|
+|:----------------------|--:|---:|-------:|---:|-----:|------:|-----------:|
+|Baseline               | 20| 100|   0.050| 1.0|   0.0|    0.0|         0.0|
+|Innovation SD 0.5      | 20| 100|   0.050| 0.5|   0.0|    0.0|         0.0|
+|Innovation SD 2        | 20| 100|   0.050| 2.0|   0.0|    0.0|         0.0|
+|Variables 10           | 10| 100|   0.050| 1.0|   0.0|    0.0|         0.0|
+|Variables 30           | 30| 100|   0.050| 1.0|   0.0|    0.0|         0.0|
+|Variables 40           | 40| 100|   0.050| 1.0|   0.0|    0.0|         0.0|
+|Density 0.025          | 20| 100|   0.025| 1.0|   0.0|    0.0|         0.0|
+|Density 0.1            | 20| 100|   0.100| 1.0|   0.0|    0.0|         0.0|
+|Density 0.15           | 20| 100|   0.150| 1.0|   0.0|    0.0|         0.0|
+|Cross correlation 0.3  | 20| 100|   0.050| 1.0|   0.3|    0.0|         0.0|
+|Cross correlation 0.6  | 20| 100|   0.050| 1.0|   0.6|    0.0|         0.0|
+|Serial correlation 0.3 | 20| 100|   0.050| 1.0|   0.0|    0.3|         0.0|
+|Serial correlation 0.6 | 20| 100|   0.050| 1.0|   0.0|    0.6|         0.0|
+|Measurement SD 0.5     | 20| 100|   0.050| 1.0|   0.0|    0.0|         0.5|
+|Measurement SD 1       | 20| 100|   0.050| 1.0|   0.0|    0.0|         1.0|
+|Time points 50         | 20|  50|   0.050| 1.0|   0.0|    0.0|         0.0|
+

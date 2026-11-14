@@ -1,0 +1,59 @@
+---
+title: "Simulation comparisons across all 16 conditions"
+output: html_document
+---
+
+```{r setup, message=FALSE,warning=FALSE}
+source("00_load_functions.R")
+```
+
+## Design
+
+Compare multi-VAR, adaptive multi-VAR, individual LASSO, and pooled LASSO
+using five replications per condition. The baseline has 10 subjects,
+20 variables, 100 time points, density 0.05, innovation SD 1, independent
+innovations, and no measurement error. Each alternative changes one factor.
+
+| Factor | Levels, including the baseline |
+|---|---|
+| Innovation SD | 0.5, 1, 2 |
+| Number of variables | 10, 20, 30, 40 |
+| Nonzero coefficient density | 0.025, 0.05, 0.10, 0.15 |
+| Series length | 50, 100 |
+| Contemporaneous innovation correlation | 0, 0.3, 0.6 |
+| Serial innovation correlation | 0, 0.3, 0.6 |
+| Measurement-error SD | 0, 0.5, 1 |
+
+The shared baseline and 15 alternatives give 16 distinct conditions.
+Each figure shows six factors; series length is included in the tables.
+Knitting reads the saved results.
+
+## Coefficient recovery and forecasting
+
+```{r figures, echo=FALSE, out.width='100%'}
+knitr::include_graphics(c("results/figures/relative_frobenius.png",
+                         "results/figures/rmsfe_h1.png"))
+```
+
+```{r tables, echo=FALSE, results='asis'}
+cat(readLines("results/tables/01_relative_frobenius.txt"), sep = "\n")
+cat("\n\n")
+cat(readLines("results/tables/02_rmsfe_h1.txt"), sep = "\n")
+```
+
+## Support recovery
+
+```{r support-figures, echo=FALSE, out.width='100%'}
+knitr::include_graphics(c("results/figures/sensitivity.png",
+                         "results/figures/specificity.png"))
+```
+
+Sensitivity measures recovery of true nonzero coefficients; specificity
+measures exclusion of true zeros. Higher values are better for both.
+
+## Paired comparison with individual LASSO
+
+```{r paired-table, echo=FALSE, results='asis'}
+cat(readLines("results/tables/05_paired_relative_frobenius.txt"), sep = "\n")
+```
+
